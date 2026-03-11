@@ -1,6 +1,8 @@
 # Highload(TikTok)
 Проектирую высоконагруженное приложение(TikTok)
 
+<img src="https://github.com/user-attachments/assets/0e64ff80-d300-4be9-b30c-f4c9705e8850" width="54" height="54">
+
 ## ДЗ1:  
 
 Тип: платформа коротких видео с алгоритмической рекомендательной лентой
@@ -29,10 +31,15 @@
 
 6) Поиск реализуется по авторам, текстовым описаниям и хештегам видео с использованием полнотекстового индекса для быстрого поиска и ранжирования результатов.
 
-Количество пользователей: 1.99 миллиардов [1]  
-MAU - 1.37 миллиардов [1]
+ВАЖНО:
 
-Распределение по географии: [1]
+Официальные данные по MAU/DAU тикток не публикует, а в разных источниках она отличается. Будем придерживаться самых наибольших показателей
+Примечание: Многие источники ссылаются на statista.com, в котором некоторые статьи можно просмотреть только с платным доступ. В этом случае,
+как первоисточник, я указывал изначальные сайты.
+MAU: 1.99 Млрд [1]
+
+Распределение по географии: [2]
+<img width="1024" height="768" alt="image" src="https://github.com/user-attachments/assets/c20dfb46-9587-42ac-ab38-805e487409ce" />
 ```
 Страна	                Количество пользователей (в миллионах)  
 Индонезия	            180.11M   
@@ -46,6 +53,28 @@ MAU - 1.37 миллиардов [1]
 Таиланд             	56.63M  
 Бангладеш	            56.22M  
 ```
+## ДЗ2:
+
+
+Согласно статье [3], для facebook MAU = 3.07 Млрд, DAU = 2.11 Млрд, т.е. DAU ≈ 69% от MAU для facebook.
+
+Согласно статистике [4], приведённой ниже, пользователи tiktok проводят в нём ежедневно 1ч 37м, что является самым высоким показателем
+среди массовых приложений(Источник ссылается на similarWeb, но я просмотрел остальные сайты, и там информация такая же, оставил этот источник для
+сравнения с facebook).
+
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/76ca863c-3328-4db9-ad98-b685a40b8e20" />
+
+Также известно, что тикток аудитория считается одной из самых вовлечённых, поэтому предположим, что для него
+DAU = 75% от MAU, следовательно DAU = 0,75 * 1.99 ≈ 1.5 Млрд 
+
+
+
 
 ## Ссылки:
-[1] [tridenstechnology.com - TikTok statistics 2025](https://tridenstechnology.com/ru/%D1%81%D1%82%D0%B0%D1%82%D0%B8%D1%81%D1%82%D0%B8%D0%BA%D0%B0-%D0%BF%D0%BE%D0%BB%D1%8C%D0%B7%D0%BE%D0%B2%D0%B0%D1%82%D0%B5%D0%BB%D0%B5%D0%B9-tiktok/)
+[1] [statista.com/global-social-networks-ranked-by-number-of-users](https://www.statista.com/statistics/272014/global-social-networks-ranked-by-number-of-users/)
+
+[2] https://tridenstechnology.com/ru/%D1%81%D1%82%D0%B0%D1%82%D0%B8%D1%81%D1%82%D0%B8%D0%BA%D0%B0-%D0%BF%D0%BE%D0%BB%D1%8C%D0%B7%D0%BE%D0%B2%D0%B0%D1%82%D0%B5%D0%BB%D0%B5%D0%B9-tiktok/#h-quick-tiktok-statistics-editor-s-picks
+
+[3] https://www.demandsage.com/facebook-statistics/
+
+[4] https://datareportal.com/reports/digital-2026-global-overview-report
