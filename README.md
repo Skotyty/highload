@@ -758,7 +758,7 @@ SSL/TLS termination **не является определяющим огран�
 | **feed_cache** | Предрассчитанная персональная лента | `user_id`, `generated_at`, `expires_at`, `video_ids` | ~1.5 КБ | 1.493 млрд active users | ~2.24 ТБ | до **117 000 QPS** refresh/write | **940 037 QPS** feed reads |
 | **search_documents** | Полнотекстовый индекс видео и авторов | `document_id`, `document_type`, `video_id`, `user_id`, `text`, `popularity_score` | ~512 Б | ~10.39 млрд docs: users + videos | ~5.32 ТБ без overhead индекса | ~453 QPS upload indexing + profile updates | **88 128 QPS** |
 
-#### Пояснения к неоднозначным полям
+#### Пояснения к некоторым   полям
 
 | Поле | Пояснение |
 |---|---|
@@ -781,28 +781,9 @@ SSL/TLS termination **не является определяющим огран�
 | **Append-only / At-least-once** | `view_events` | View-события не должны теряться, но могут приходить повторно. Дедупликация выполняется по `event_id`/idempotency key в consumer layer. |
 | **Rebuildable cache** | `feed_cache`, CDN cache, hot metadata cache | Кэш можно восстановить из primary storage и event log. |
 
-### 5.4 Особенности распределения нагрузки по ключам
-
-| Сущность | Основной ключ нагрузки | Риск | Способ компенсации |
-|---|---|---|---|
-| **videos / video_stats** | `video_id` | Вирусные ролики создают hot key на счётчиках | Bucketed counters `video_id + bucket`, Redis hot counters, periodic flush в durable storage |
-| **view_events** | `video_id`, `user_id` | При партиционировании только по `video_id` вирусный ролик перегреет одну партицию | Два потока: по `user_id` для user features и по `video_id + bucket` для счётчиков |
-| **likes** | `(user_id, video_id)`, `video_id` | Нужна и проверка состояния лайка, и агрегация лайков видео | Двойная запись в user-oriented и video-oriented физические таблицы |
-| **comments** | `video_id` | Популярное видео концентрирует чтение/запись комментариев | Bucket по дню: `video_id + bucket_day` |
-| **follows** | `follower_id`, `followee_id` | Популярные авторы создают hot partition на подписчиках | Две физические проекции: by follower и by followee + bucket |
-| **feed_cache** | `user_id` | Очень частое чтение при открытии ленты | TTL cache, background refresh, fallback на онлайн-кандидаты при cache miss |
-| **search_documents** | текстовые токены, `document_type` | Горячие поисковые запросы | OpenSearch replicas, query cache, отдельный ranking score |
-
 ---
 
 ## ДЗ6: Физическая схема БД
-
-Физическая схема показывает, как логические сущности из ДЗ5 раскладываются по конкретным хранилищам. В отличие от логической схемы, здесь допускается денормализация и дублирование данных под конкретные паттерны чтения.
-
-Ключевое отличие ДЗ6 от ДЗ5:
-
-- ДЗ5 отвечает на вопрос **«какие сущности есть в продукте»**.
-- ДЗ6 отвечает на вопрос **«где и в каком виде эти сущности физически лежат, как индексируются, шардируются и резервируются»**.
 
 ### 6.1 Физическая схема БД
 
@@ -859,8 +840,6 @@ SSL/TLS termination **не является определяющим огран�
 | `opensearch_documents` | `text`, `document_type`, `popularity_score` | Inverted index + doc values | поиск видео/авторов | `~1.5–2×` от documents: `~8–11 ТБ` |
 | `object_storage_video_objects` | `file_key` | Object key | отдача файла origin/CDN | индекс object storage, отдельно не считается как SQL-индекс |
 | **Итого считаемых индексов / ключей** | — | — | PostgreSQL B-Tree + ScyllaDB primary-key overhead + ClickHouse sparse index + OpenSearch index | **~1.31–1.32 ПБ** |
-
-> В итог не включены Redis-ключи и внутренний индекс object storage. Replication Factor и реплики также не учитываются: это логический объём индексов/ключей до умножения на репликацию. Основной вклад дают две таблицы лайков (`likes_by_user_video` и `likes_by_video_user`), потому что в расчёте используется верхняя оценка количества уникальных пар user-video за год.
 
 ### 6.5 Шардирование и резервирование
 
@@ -926,8 +905,6 @@ SSL/TLS termination **не является определяющим огран�
 | Поиск | OpenSearch | Нужен специализированный полнотекстовый индекс и ranking. |
 
 ## ДЗ7: Алгоритмы
-
-В разделе описаны алгоритмы, которые напрямую связаны с новой логической и физической схемой БД: лента, view-events, лайки/комментарии, upload processing и поиск. Служебные таблицы processing jobs в БД не используются: состояние обработки хранится в `videos.status`, а готовые файлы появляются в `video_assets`.
 
 ### 7.1 Формирование персонализированной ленты
 
@@ -1200,6 +1177,9 @@ Origin/API ДЦ работают по региональной модели. У 
 | Object Storage | upload success rate, read latency, degraded PGs/OSDs |
 | CDN | cache hit ratio, edge egress, origin refill traffic |
 
+
+## ДЗ10 Схема проекта
+ 
 ## 10.1 Общая схема взаимодействия сервисов
 
 Схема показывает два контура: **origin/API** и **CDN edge**. Видеотрафик пользователей идёт через CDN, а origin/API отвечает за динамические запросы, загрузку видео, обработку событий, поиск и хранение исходных объектов.
