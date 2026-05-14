@@ -1222,13 +1222,14 @@ Origin/API ДЦ работают по региональной модели. У 
 ---
 
 ## ДЗ11: Список серверов и расчёт ресурсов
+## ДЗ11: Список серверов и расчёт ресурсов
 
 ### 11.1 Принцип расчёта
 
 Серверы считаются отдельно для двух контуров:
 
-1. **Origin/API ДЦ** — API, лента, события, поиск, загрузка, metadata, object storage.
-2. **CDN edge** — cache-серверы, отдающие видео пользователям.
+1. **Origin/API ДЦ** — API, лента, события, поиск, загрузка, metadata и object storage.
+2. **CDN edge** — cache-серверы, которые отдают видео пользователям.
 
 Подробный расчёт выполняется для **DC6 Sao Paulo** как самого нагруженного origin/API ДЦ. По ДЗ3 на него приходится:
 
@@ -1241,19 +1242,19 @@ Origin/API ДЦ работают по региональной модели. У 
 | Пиковые загрузки видео | **~72 video/s** |
 | Пиковый CDN edge traffic региона | **54 330 Гбит/с** |
 
-Общая формула:
+Общая формула расчёта:
 
 ```text
 Необходимые ресурсы = пиковая нагрузка / производительность одного ядра или сервера
 ```
 
-Для stateless-сервисов дополнительно применяется коэффициент запаса **1.2–1.3** на:
+Для stateless-сервисов применяется коэффициент запаса **1.2–1.3** на:
 
 - сетевые накладные расходы;
 - GC/runtime overhead;
 - ретраи;
 - rolling update;
-- неравномерность распределения трафика;
+- неравномерное распределение трафика;
 - отказ части pod-ов или worker-node.
 
 Остальные origin/API ДЦ масштабируются пропорционально своей доле трафика из ДЗ3.
@@ -1278,7 +1279,7 @@ Origin/API ДЦ работают по региональной модели. У 
 
 Kubernetes выбран, потому что stateless-сервисы требуют горизонтального масштабирования, rolling update, health checks, service discovery и автоматического перезапуска pod-ов.
 
-Stateful-компоненты не запускаются как обычные Kubernetes workloads, а размещаются на выделенных bare-metal серверах:
+Stateful-компоненты размещаются на выделенных bare-metal серверах:
 
 - PostgreSQL;
 - ScyllaDB;
@@ -1286,7 +1287,7 @@ Stateful-компоненты не запускаются как обычные 
 - Kafka;
 - ClickHouse;
 - OpenSearch;
-- Ceph/Object Storage;
+- Object Storage / Ceph;
 - L4/L7-балансировщики;
 - monitoring stack.
 
@@ -1298,15 +1299,17 @@ Stateful-компоненты не запускаются как обычные 
 
 ### 11.3 Модель хостинга
 
-Для проекта выбран гибридный подход.
+Для основной постоянной нагрузки используется **собственное железо / colocation**, так как проект имеет предсказуемый профиль нагрузки, большой объём хранения и высокий CDN-трафик.
 
-| Контур | Модель | Обоснование |
-|---|---|---|
-| Origin/API дата-центры | Собственное железо / colocation | Нагрузка предсказуемая, объём хранения большой, стоимость облачного egress и storage была бы слишком высокой |
-| CDN edge PoP | Собственные или арендованные edge-серверы в точках обмена трафиком | Основной видеотрафик должен обслуживаться рядом с пользователем, а не из origin ДЦ |
-| Временные ML/CI/экспериментальные задачи | Облако / арендованные VM | Нужна гибкость, но эти задачи не являются постоянным критическим контуром |
+Stateful-компоненты размещаются на выделенных bare-metal серверах, чтобы избежать нестабильного disk I/O, CPU throttling и сетевого overhead контейнеризации.
 
-Такой подход позволяет держать основную нагрузку на собственном железе, а временные и экспериментальные задачи выносить в облако.
+Облако или арендованные VM используются только для временных задач:
+
+- CI/CD;
+- ML-эксперименты;
+- нагрузочные тесты;
+- кратковременные пики;
+- временные вспомогательные сервисы.
 
 ---
 
@@ -1315,17 +1318,17 @@ Stateful-компоненты не запускаются как обычные 
 | Тип узла | Конфигурация | Норма |
 |---|---|---:|
 | API worker node | 128 vCPU, 512 GB RAM, 2×100GbE | ~80–100 эффективных service cores |
-| L4 LVS | 8 vCPU, 32 GB RAM, 100GbE | до 100 Гбит/с входящего L4-трафика |
+| L4-балансировщик | 8 vCPU, 32 GB RAM, 100GbE | до 100 Гбит/с входящего L4-трафика |
 | L7 NGINX | 16 vCPU, 64 GB RAM, 10GbE | 8.8 Гбит/с HTTP throughput |
 | Kafka broker | 32 vCPU, 256 GB RAM, 4×7.68 TB NVMe, 100GbE | ~80k events/s logical load |
 | ScyllaDB node | 64 vCPU, 512 GB RAM, 8×7.68 TB NVMe, 100GbE | key-value read/write с RF=3 |
 | Redis node | 32 vCPU, 512 GB RAM, NVMe AOF | in-memory feed/cache/counters |
 | ClickHouse node | 32 vCPU, 256 GB RAM, 8×7.68 TB NVMe | batch insert view events |
 | OpenSearch node | 32 vCPU, 256 GB RAM, NVMe | search_documents + autocomplete |
-| Ceph OSD node | 24–32 cores, 256 GB RAM, 36×22 TB HDD + NVMe WAL/DB | origin object storage |
+| Storage node | 24–32 cores, 256 GB RAM, 36×22 TB HDD + NVMe WAL/DB | origin object storage |
 | CDN edge node | cache disks, 2×100GbE | 140 Гбит/с эффективной отдачи при 70% загрузке NIC |
 
-Нормы являются проектными допущениями. Для реального проекта их нужно уточнять нагрузочным тестированием на одном экземпляре сервиса и затем линейно масштабировать.
+Нормы являются проектными допущениями. В реальном проекте они уточняются нагрузочным тестированием одного экземпляра сервиса и затем масштабируются горизонтально.
 
 ---
 
@@ -1359,15 +1362,15 @@ View events:
 В `interaction-service` входят лайки, комментарии и подписки.
 
 ```text
-likes:    1 128 044 × 15.9% ≈ 179 259 RPS
-comments:   28 201 × 15.9% ≈   4 484 RPS
-follows:    14 101 × 15.9% ≈   2 242 RPS
+likes:      1 128 044 × 15.9% ≈ 179 259 RPS
+comments:     28 201 × 15.9% ≈   4 484 RPS
+follows:      14 101 × 15.9% ≈   2 242 RPS
 
 Итого:
 ~186 000 RPS
 ```
 
-Для interaction-service принимается консервативная норма **4 000 RPS/core**, так как сервис не только принимает запрос, но и обращается к ScyllaDB/Redis/Kafka.
+Для `interaction-service` принимается консервативная норма **4 000 RPS/core**, так как сервис не только принимает запрос, но и обращается к ScyllaDB, Redis и Kafka.
 
 ```text
 186 000 / 4 000 ≈ 46.5 cores
@@ -1419,16 +1422,39 @@ RAM: 1165 / 512 ≈ 3 nodes
 
 ### 11.6 Media / Transcode workers для DC6
 
-Транскодинг считается по числу исходных видео. Для DC6:
+Транскодинг считается по числу исходных загруженных видео.
+
+Для DC6:
 
 ```text
 453 global upload/s × 15.9% ≈ 72 upload/s
-Один media worker-node обрабатывает ~8 uploaded videos/s
+```
+
+Один media worker-node обрабатывает примерно:
+
+```text
+~8 uploaded videos/s
+```
+
+Тогда:
+
+```text
 72 / 8 = 9 active nodes
 9 × 1.2 reserve ≈ 11 nodes
 ```
 
-Итого для DC6 принимается **11 media/transcode worker-node**.
+Итого для DC6 принимается:
+
+```text
+11 media/transcode worker-node
+```
+
+Эти узлы выполняют:
+
+- FFmpeg transcoding;
+- создание разных качеств видео;
+- генерацию thumbnail/preview;
+- предварительную подготовку файлов перед публикацией.
 
 ---
 
@@ -1442,7 +1468,7 @@ Kafka используется для:
 - product analytics;
 - асинхронных событий лайков, комментариев и подписок.
 
-Для Kafka используется эксплуатационная норма **80k events/s на broker**, а не теоретический максимум. Ограничитель — не CPU, а дисковая запись, сетевые реплики и retention.
+Для Kafka используется эксплуатационная норма **80k events/s на broker**, а не теоретический максимум. Ограничитель — не только CPU, но и дисковая запись, сетевые реплики и retention.
 
 При среднем размере события около **1 KB**:
 
@@ -1454,7 +1480,7 @@ Replication Factor = 3
 
 Это укладывается в 4×NVMe и 100GbE, оставляя запас на protocol overhead, rebalancing partitions, retention, consumer lag и пики producer traffic.
 
-Для DC6 используется верхняя оценка event/API-контура:
+Для Kafka используется консервативная верхняя оценка асинхронного контура DC6: view-events, interaction events, transcode jobs, product analytics и service logs reserve.
 
 ```text
 1 843 005 events/s / 80 000 events/s per broker ≈ 23 brokers
@@ -1472,7 +1498,7 @@ Replication Factor = 3
 
 | Группа серверов | Кол-во в DC6 | Конфигурация | Размещённые сервисы | Обоснование |
 |---|---:|---|---|---|
-| **L4 LVS** | **4** | 8 vCPU, 32 GB RAM, 100GbE | LVS/IPVS + Keepalived | ДЗ4: 2 active + резерв N×2 |
+| **L4-балансировщики** | **4** | 8 vCPU, 32 GB RAM, 100GbE | L4 balancing + Keepalived/VRRP | ДЗ4: 2 active + резерв N×2 |
 | **L7 NGINX** | **18** | 16 vCPU, 64 GB RAM, 10GbE | NGINX, TLS termination | ДЗ4: ограничитель — сеть 147.4 Гбит/с |
 | **Kubernetes Control Plane** | **3** | 8 vCPU, 32 GB RAM | kube-apiserver, scheduler, controller-manager, etcd | HA control-plane |
 | **Kubernetes API Workers** | **9** | 128 vCPU, 512 GB RAM, 2×100GbE | API Gateway, Feed, Interaction, Search, Upload, Ingestion | Покрытие stateless CPU с запасом |
@@ -1484,33 +1510,58 @@ Replication Factor = 3
 | **ClickHouse** | **12** | 32 vCPU, 256 GB RAM, 8×7.68 TB NVMe | view_events, aggregates, ML features | Высокий insert rate raw events |
 | **OpenSearch** | **6** | 32 vCPU, 256 GB RAM, NVMe | search_documents | Поиск видео и авторов |
 | **Ceph RGW / MON / MGR** | **6** | 16 vCPU, 64 GB RAM, 25/100GbE | Object storage gateways/control-plane | S3-compatible API |
-| **Ceph OSD Storage** | **232** | 24–32 cores, 256 GB RAM, 36×22 TB HDD + NVMe WAL/DB | media objects | 15.9% годового media объёма + EC + 70% fill |
+| **Storage nodes** | **232** | 24–32 cores, 256 GB RAM, 36×22 TB HDD + NVMe WAL/DB | media objects | 15.9% годового media объёма + EC + 70% fill |
 | **Monitoring** | **3** | 16 vCPU, 64 GB RAM, NVMe | Prometheus, Alertmanager, Grafana | HA monitoring |
 
-Итого для DC6 без CDN edge: **435 серверов**.
+Итого для DC6 без CDN edge:
+
+```text
+435 серверов
+```
 
 Примечание по `video_stats`: в ScyllaDB хранится не primary hot-состояние счётчиков, а **durable aggregates**, которые периодически сбрасываются из Redis. Горячие `views_count`, `likes_count`, `comments_count`, `rec_score` находятся в Redis и обновляются через INCR/батчи.
 
 ---
 
-### 11.9 Расчёт Ceph OSD для медиа
+### 11.9 Расчёт серверов хранения медиа
+
+Для хранения медиа используется S3-compatible object storage на базе Ceph. В расчёте считаются storage-серверы, на которых физически размещаются оригиналы видео, транскодированные версии и превью.
 
 Для DC6 берётся 15.9% годового media volume:
 
 ```text
 587.65 PB × 15.9% ≈ 93.44 PB logical/year
-93.44 PB × 1.375 EC overhead / 0.7 fill ≈ 183.5 PB raw
-Один OSD node: 36 × 22 TB = 792 TB raw
-183 500 TB / 792 TB ≈ 232 OSD nodes
 ```
 
-Итого для DC6 принимается **232 Ceph OSD node**.
+С учётом erasure coding overhead и целевой заполненности дисков 70%:
+
+```text
+93.44 PB × 1.375 EC overhead / 0.7 fill ≈ 183.5 PB raw
+```
+
+Один storage node:
+
+```text
+36 × 22 TB = 792 TB raw
+```
+
+Количество storage node:
+
+```text
+183 500 TB / 792 TB ≈ 232 nodes
+```
+
+Итого для DC6 принимается:
+
+```text
+232 storage node
+```
 
 ---
 
 ### 11.10 Глобальная оценка серверов по origin/API ДЦ
 
-| ДЦ | Backend/event total | L4 | L7 | K8s CP | K8s API workers | Media workers | Kafka | PostgreSQL | ScyllaDB | Redis | ClickHouse | OpenSearch | Ceph RGW | Ceph OSD | Monitoring | Итого |
+| ДЦ | Backend/event total | L4 | L7 | K8s CP | K8s API workers | Media workers | Kafka | PostgreSQL | ScyllaDB | Redis | ClickHouse | OpenSearch | Ceph RGW | Storage nodes | Monitoring | Итого |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | **DC1 Singapore** | 1 727 012 | 4 | 17 | 3 | 8 | 11 | 24 | 12 | 56 | 30 | 11 | 6 | 6 | 217 | 3 | **408** |
 | **DC2 Bangkok** | 1 495 025 | 4 | 15 | 3 | 7 | 9 | 22 | 12 | 49 | 26 | 10 | 5 | 6 | 188 | 3 | **359** |
@@ -1527,7 +1578,7 @@ Replication Factor = 3
 
 ### 11.11 CDN edge-серверы
 
-CDN-серверы не входят в origin/API таблицу выше. Они рассчитаны в ДЗ3 по пиковому `CDN edge → user` трафику **341 938 Гбит/с**.
+CDN-серверы не входят в origin/API таблицу выше. Они рассчитаны по пиковому `CDN edge → user` трафику **341 938 Гбит/с**.
 
 Допущение для одного CDN edge-сервера:
 
@@ -1563,7 +1614,7 @@ edge_servers = ceil(CDN edge traffic / 140 × 1.2)
 
 | Категория | Количество серверов | Контур | Комментарий |
 |---|---:|---|---|
-| L4 LVS/IPVS | 30 | Origin/API | Входная L4-балансировка в 9 ДЦ |
+| L4-балансировщики | 30 | Origin/API | Входная L4-балансировка в 9 ДЦ |
 | L7 NGINX | 119 | Origin/API | TLS termination и HTTP routing |
 | Kubernetes Control Plane | 27 | Origin/API | 3 HA control-plane узла на ДЦ |
 | Kubernetes API workers | 59 | Origin/API | Stateless API, feed, upload, ingestion |
@@ -1575,7 +1626,7 @@ edge_servers = ceil(CDN edge traffic / 140 × 1.2)
 | ClickHouse | 80 | Origin/API | view_events, aggregates, ML features |
 | OpenSearch | 43 | Origin/API | search_documents, video/author autocomplete |
 | Ceph RGW/MON/MGR | 54 | Origin/API | Object storage gateways and control-plane |
-| Ceph OSD Storage | 1 459 | Origin/API | Origin media storage for first year |
+| Storage nodes | 1 459 | Origin/API | Origin media storage for first year |
 | Monitoring | 27 | Origin/API | Prometheus, Alertmanager, Grafana, logs/traces collectors |
 | **Итого origin/API ДЦ** | **2 831** | **Origin/API** | 9 региональных origin/API ДЦ |
 | CDN edge-серверы | 2 953 | CDN edge | Edge cache-серверы в PoP |
@@ -1663,42 +1714,13 @@ CPU используется как основной ограничитель. R
 Большая часть серверов приходится на:
 
 1. **CDN edge**, потому что видеотрафик доминирует над API-нагрузкой.
-2. **Ceph OSD**, потому что хранение видео требует большого объёма дисков.
+2. **Storage nodes**, потому что хранение видео требует большого объёма дисков.
 3. **ScyllaDB / Kafka / ClickHouse**, потому что view events и interaction events имеют очень высокий поток записи.
 
 Stateless backend-сервисы занимают меньшую долю оборудования и масштабируются горизонтально через Kubernetes.
 
-
-### 11.15 Оценка стоимости инфраструктуры
-
-Оценка стоимости является приблизительной. Цены зависят от поставщика, страны размещения, стоимости сетевых портов, дисков, colocation и условий закупки. В расчёте ниже учитывается только серверная инфраструктура: compute, базы данных, очереди, object storage и CDN edge-серверы. Стоимость магистральных каналов, пиринга, стоек, электроэнергии и работы SRE-команды в итог не включается.
-
-Для проекта рассматриваются две модели:
-
-1. **Аренда bare-metal серверов** — проще стартовать, но дороже на горизонте нескольких лет.
-2. **Покупка собственного железа** — выше upfront cost, но ниже стоимость владения при стабильной крупной нагрузке.
-
-#### Принятые оценки стоимости
-
-| Категория | Кол-во серверов | Оценка аренды за сервер / мес | Оценка покупки за сервер | Комментарий |
-|---|---:|---:|---:|---|
-| L4 LVS/IPVS | 30 | $150 | $4 000 | Небольшие сетевые узлы с 100GbE |
-| L7 NGINX | 119 | $300 | $7 000 | TLS termination и HTTP routing |
-| Kubernetes Control Plane | 27 | $150 | $4 000 | etcd / kube-apiserver / scheduler |
-| Kubernetes API workers | 59 | $1 200 | $25 000 | 128 vCPU, 512 GB RAM, 2×100GbE |
-| Media / Transcode workers | 73 | $1 500 | $30 000 | CPU-heavy FFmpeg workers |
-| Kafka brokers | 169 | $1 000 | $20 000 | NVMe + 100GbE |
-| PostgreSQL | 108 | $800 | $16 000 | Metadata shards + replicas |
-| ScyllaDB | 381 | $1 800 | $32 000 | 64 vCPU, 512 GB RAM, NVMe |
-| Redis Cluster | 202 | $1 600 | $28 000 | Memory-heavy nodes |
-| ClickHouse | 80 | $1 200 | $24 000 | Analytical storage |
-| OpenSearch | 43 | $1 100 | $22 000 | Search index nodes |
-| Ceph RGW / MON / MGR | 54 | $500 | $10 000 | Object storage control-plane |
-| Ceph OSD Storage | 1 459 | $3 000 | $45 000 | 36×22 TB HDD + NVMe WAL/DB |
-| Monitoring | 27 | $500 | $8 000 | Prometheus, Grafana, logs/traces |
-| CDN edge | 2 953 | $1 200 | $22 000 | 2×100GbE cache-серверы |
-
 ---
+
 ### 11.15 Оценка стоимости инфраструктуры
 
 Оценка стоимости является приблизительной. Цены зависят от поставщика, страны размещения, стоимости сетевых портов, дисков, colocation и условий закупки. В расчёте ниже учитывается только серверная инфраструктура: compute, базы данных, очереди, object storage, observability и CDN edge-серверы.
@@ -1730,7 +1752,7 @@ Total servers      = 5 784
 
 | Категория | Кол-во серверов | Оценка аренды за сервер / мес | Оценка покупки за сервер | Комментарий |
 |---|---:|---:|---:|---|
-| L4 LVS/IPVS | 30 | $150 | $4 000 | Небольшие сетевые узлы с 100GbE |
+| L4-балансировщики | 30 | $150 | $4 000 | Небольшие сетевые узлы с 100GbE |
 | L7 NGINX | 119 | $300 | $7 000 | TLS termination и HTTP routing |
 | Kubernetes Control Plane | 27 | $150 | $4 000 | etcd / kube-apiserver / scheduler |
 | Kubernetes API workers | 59 | $1 200 | $25 000 | 128 vCPU, 512 GB RAM, 2×100GbE |
@@ -1742,7 +1764,7 @@ Total servers      = 5 784
 | ClickHouse | 80 | $1 200 | $24 000 | Analytical storage |
 | OpenSearch | 43 | $1 100 | $22 000 | Search index nodes |
 | Ceph RGW / MON / MGR | 54 | $500 | $10 000 | Object storage control-plane |
-| Ceph OSD Storage | 1 459 | $3 000 | $45 000 | 36×22 TB HDD + NVMe WAL/DB |
+| Storage nodes | 1 459 | $3 000 | $45 000 | 36×22 TB HDD + NVMe WAL/DB |
 | Monitoring | 27 | $500 | $8 000 | Prometheus, Grafana, logs/traces |
 | CDN edge | 2 953 | $1 200 | $22 000 | 2×100GbE cache-серверы |
 
@@ -1866,7 +1888,6 @@ Payback_without_support = 161 925 000 / 9 593 350
 ```
 
 То есть без учёта поддержки покупка окупается примерно за **17 месяцев**.
-
 
 ## Ссылки:
 [1] [statista.com/global-social-networks-ranked-by-number-of-users](https://www.statista.com/statistics/272014/global-social-networks-ranked-by-number-of-users/)
