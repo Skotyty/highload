@@ -617,7 +617,7 @@ NGINX выполняет:
 
 | Уровень | Активных узлов | Резерв | Итого |
 |---|---:|---:|---:|
-| **L4 LVS/IPVS** | **2** | **2** | **4** |
+| **L4 ** | **2** | **2** | **4** |
 
 #### Проверка связки L4 100GbE → L7 10GbE
 
@@ -694,7 +694,7 @@ SSL/TLS termination **не является определяющим огран�
 
 | Уровень | Количество | Конфигурация узла | Тип резервирования | Ограничитель |
 |---|---:|---|---|---|
-| **L4 LVS/IPVS** | **4** | CPU 8 cores, NIC 100GbE | **N × 2** | Пропускная способность сети |
+| **L4 LVS** | **4** | CPU 8 cores, NIC 100GbE | **N × 2** | Пропускная способность сети |
 | **L7 NGINX** | **18** | CPU 16 cores, NIC 10GbE | **N + 1** | Пропускная способность сети |
 
 ### 4.6 Итоговая логика обработки запроса
@@ -1083,7 +1083,7 @@ SSL/TLS termination **не является определяющим огран�
 | **Python** | Offline ML/recommendation jobs, feature engineering | Удобная экосистема для подготовки признаков и экспериментов с ranking-моделями. |
 | **REST/HTTP API** | Внешний клиентский API: mobile/web → NGINX → API Gateway | Совместимость с мобильными клиентами, браузером, CDN/WAF и стандартными HTTP-инструментами. |
 | **gRPC + Protobuf** | Внутренние вызовы между API Gateway, Feed, Interaction, Media и Search services | Типизированный контракт, компактная сериализация, HTTP/2 multiplexing и deadline propagation. |
-| **LVS/IPVS + Keepalived** | L4-балансировка внутри ДЦ | VIP, распределение TCP-соединений и VRRP/failover. |
+| **LVS + Keepalived** | L4-балансировка внутри ДЦ | VIP, распределение TCP-соединений и VRRP/failover. |
 | **NGINX** | L7-балансировка и TLS termination | HTTP routing по `Host/path`, TLS termination, keep-alive и защита backend от прямого клиентского трафика. |
 | **Kubernetes** | Оркестрация stateless-сервисов и воркеров | Rolling updates, self-healing, readiness/liveness probes, HPA по CPU/RPS/Kafka lag. |
 | **Kubernetes Service Discovery / CoreDNS** | Service discovery внутри кластера | Сервисы находят друг друга по стабильным DNS-именам Kubernetes Service, а не по IP pod-ов. |
@@ -1110,7 +1110,7 @@ SSL/TLS termination **не является определяющим огран�
 | **GeoDNS / latency routing** | Weighted routing, active health checks, traffic draining перед обслуживанием ДЦ. При деградации региона его вес уменьшается или регион исключается из DNS-ответов. |
 | **BGP Anycast для CDN** | Один anycast-prefix анонсируется из нескольких CDN PoP. При отказе PoP он withdraw-ит BGP-анонс, и трафик уходит в следующий ближайший PoP. |
 | **CDN Edge PoP** | N+1 по edge-серверам внутри PoP. Edge cache не источник истины: при потере кэш заново прогревается из origin. |
-| **L4 LVS/IPVS** | Резервирование N×2. Keepalived/VRRP переводит VIP на резервный L4-узел при отказе активного. |
+| **L4 ** | Резервирование N×2. Keepalived/VRRP переводит VIP на резервный L4-узел при отказе активного. |
 | **L7 NGINX** | Резервирование N+1, active-active. Readiness checks исключают неисправные узлы, connection draining защищает in-flight запросы при деплое. |
 | **Kubernetes services** | Несколько replicas, readiness/liveness probes, rolling update, PodDisruptionBudget, HPA по CPU/RPS/Kafka lag. |
 | **PostgreSQL `pg_users`** | Primary + 2 replicas на shard, Patroni failover, WAL archive, ежедневные full backups со standby. |
@@ -1205,8 +1205,8 @@ Origin/API ДЦ работают по региональной модели. У 
 
 | Обозначение | Значение |
 |---|---|
-| `read` / `r` | Синхронное чтение из хранилища. |
-| `write` / `w` | Синхронная запись состояния. |
+| `read`  | Синхронное чтение из хранилища. |
+| `write` | Синхронная запись состояния. |
 | `produce events` | Асинхронная публикация события в Kafka. |
 | `INCR counters` | Быстрое изменение горячих счётчиков Redis. |
 | `periodic flush` | Периодический сброс агрегатов в durable storage. |
@@ -1214,7 +1214,7 @@ Origin/API ДЦ работают по региональной модели. У 
 
 ## 10.4 Связь схемы с балансировкой
 
-- API-запросы идут через GeoDNS → L4 LVS/IPVS → L7 NGINX → API Gateway.
+- API-запросы идут через GeoDNS → L4 → L7 NGINX → API Gateway.
 - CDN-видеотрафик идёт через BGP Anycast и не проходит через API-балансировщики origin ДЦ.
 - Kafka и Redis отделяют синхронный пользовательский путь от тяжёлой асинхронной обработки.
 - Object Storage является source of truth для бинарных видеообъектов, CDN cache является rebuildable.
