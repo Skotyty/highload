@@ -399,7 +399,7 @@ CDN edge-серверы **не являются API-серверами**. Это
 | **South Asia** | DC3 Мумбаи | **44 072 Гбит/с** | Mumbai, Delhi, Karachi, Dhaka, Dubai, Colombo | **380** |
 | **US East** | DC4 Ашберн | **26 975 Гбит/с** | Ashburn, New York, Miami, Atlanta, Toronto | **233** |
 | **US West** | DC5 Лос-Анджелес | **20 136 Гбит/с** | Los Angeles, San Jose, Seattle, Dallas, Phoenix | **175** |
-| **LATAM** | DC6 Сан-Паулу | **54 330 Гбит/с** | São Paulo, Rio de Janeiro, Mexico City, Bogotá, Santiago, Buenos Aires, Lima | **469** |
+| **LATAM** | DC6 Сан-Паулу | **54 330 Гбит/с** | Sao Paulo, Rio de Janeiro, Mexico City, Bogotá, Santiago, Buenos Aires, Lima | **469** |
 | **RU/CIS** | DC7 Москва | **26 975 Гбит/с** | Moscow, Saint Petersburg, Almaty, Tashkent, Yerevan, Tbilisi | **235** |
 | **Europe + Africa/MENA** | DC8 Франкфурт | **37 233 Гбит/с** | Frankfurt, Amsterdam, London, Paris, Warsaw, Madrid, Milan, Istanbul, Johannesburg | **321** |
 | **East Asia** | DC9 Токио | **37 233 Гбит/с** | Tokyo, Osaka, Seoul, Taipei, Hong Kong | **320** |
@@ -438,7 +438,7 @@ CDN edge-серверы **не являются API-серверами**. Это
 | US West | Seattle | 15% | **3 020 Гбит/с** | **26** | Покрытие северо-запада США |
 | US West | Dallas | 20% | **4 027 Гбит/с** | **35** | Центральный узел для балансировки между востоком и западом США |
 | US West | Phoenix | 10% | **2 014 Гбит/с** | **18** | Резерв и покрытие юго-запада США |
-| LATAM | São Paulo | 30% | **16 299 Гбит/с** | **140** | Крупнейший интернет-узел Бразилии и ближайший origin DC6 |
+| LATAM | Sao Paulo | 30% | **16 299 Гбит/с** | **140** | Крупнейший интернет-узел Бразилии и ближайший origin DC6 |
 | LATAM | Rio de Janeiro | 15% | **8 150 Гбит/с** | **70** | Дополнительная ёмкость для Бразилии |
 | LATAM | Mexico City | 20% | **10 866 Гбит/с** | **94** | Покрытие Мексики, второго крупного рынка региона |
 | LATAM | Bogotá | 10% | **5 433 Гбит/с** | **47** | Покрытие севера Южной Америки |
@@ -1230,7 +1230,7 @@ Origin/API ДЦ работают по региональной модели. У 
 1. **Origin/API ДЦ** — API, лента, события, поиск, загрузка, metadata, object storage.
 2. **CDN edge** — cache-серверы, отдающие видео пользователям.
 
-Подробный расчёт выполняется для **DC6 São Paulo** как самого нагруженного origin/API ДЦ. По ДЗ3 на него приходится:
+Подробный расчёт выполняется для **DC6 Sao Paulo** как самого нагруженного origin/API ДЦ. По ДЗ3 на него приходится:
 
 | Метрика | Значение |
 |---|---:|
@@ -1517,7 +1517,7 @@ Replication Factor = 3
 | **DC3 Mumbai** | 1 495 025 | 4 | 15 | 3 | 7 | 9 | 22 | 12 | 49 | 26 | 10 | 5 | 6 | 188 | 3 | **359** |
 | **DC4 Ashburn** | 915 059 | 2 | 10 | 3 | 5 | 6 | 14 | 12 | 30 | 16 | 7 | 4 | 6 | 115 | 3 | **233** |
 | **DC5 Los Angeles** | 683 072 | 2 | 8 | 3 | 4 | 5 | 10 | 12 | 23 | 12 | 5 | 3 | 6 | 86 | 3 | **182** |
-| **DC6 São Paulo** | 1 843 005 | 4 | 18 | 3 | 9 | 11 | 27 | 12 | 60 | 32 | 12 | 6 | 6 | 232 | 3 | **435** |
+| **DC6 Sao Paulo** | 1 843 005 | 4 | 18 | 3 | 9 | 11 | 27 | 12 | 60 | 32 | 12 | 6 | 6 | 232 | 3 | **435** |
 | **DC7 Moscow** | 915 059 | 2 | 10 | 3 | 5 | 6 | 14 | 12 | 30 | 16 | 7 | 4 | 6 | 115 | 3 | **233** |
 | **DC8 Frankfurt** | 1 263 039 | 4 | 13 | 3 | 7 | 8 | 18 | 12 | 42 | 22 | 9 | 5 | 6 | 159 | 3 | **311** |
 | **DC9 Tokyo** | 1 263 039 | 4 | 13 | 3 | 7 | 8 | 18 | 12 | 42 | 22 | 9 | 5 | 6 | 159 | 3 | **311** |
@@ -1551,7 +1551,7 @@ edge_servers = ceil(CDN edge traffic / 140 × 1.2)
 | South Asia | 44 072 Гбит/с | 380 | Mumbai, Karachi, Dhaka |
 | US East | 26 975 Гбит/с | 233 | Ashburn, New York, Atlanta, Miami |
 | US West | 20 136 Гбит/с | 174 | Los Angeles, San Jose, Seattle, Dallas |
-| LATAM | 54 330 Гбит/с | 469 | São Paulo, Rio de Janeiro, Mexico City, Bogotá, Santiago, Buenos Aires, Lima |
+| LATAM | 54 330 Гбит/с | 469 | Sao Paulo, Rio de Janeiro, Mexico City, Bogotá, Santiago, Buenos Aires, Lima |
 | RU/CIS | 26 975 Гбит/с | 233 | Moscow, Saint Petersburg, Almaty |
 | Europe + Africa/MENA | 37 233 Гбит/с | 321 | Frankfurt, Amsterdam, London, Paris, Warsaw, Madrid, Milan, Dubai, Johannesburg |
 | East Asia + Oceania | 37 233 Гбит/с | 323 | Tokyo, Osaka, Seoul, Taipei, Hong Kong, Sydney |
